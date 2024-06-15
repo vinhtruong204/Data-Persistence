@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -11,21 +12,24 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text HighScoreText;
+
     public GameObject GameOverText;
-    
+
     private bool m_Started = false;
     private int m_Points;
-    
+
     private bool m_GameOver = false;
 
-    
+    private PlayerData playerHighScore;
+
     // Start is called before the first frame update
     void Start()
     {
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
-        
-        int[] pointCountArray = new [] {1,1,2,2,5,5};
+
+        int[] pointCountArray = new[] { 1, 1, 2, 2, 5, 5 };
         for (int i = 0; i < LineCount; ++i)
         {
             for (int x = 0; x < perLine; ++x)
@@ -35,6 +39,22 @@ public class MainManager : MonoBehaviour
                 brick.PointValue = pointCountArray[i];
                 brick.onDestroyed.AddListener(AddPoint);
             }
+        }
+
+        LoadHighScorePlayer();
+    }
+
+    private void LoadHighScorePlayer()
+    {
+        string path = Application.persistentDataPath + "/saveplayer.json";
+
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+
+            playerHighScore = JsonUtility.FromJson<PlayerData>(json);
+
+            HighScoreText.text = "Best Score: " + playerHighScore.name + " : " + playerHighScore.points;
         }
     }
 
@@ -55,12 +75,29 @@ public class MainManager : MonoBehaviour
         }
         else if (m_GameOver)
         {
+            Player.Instance.points = m_Points; // assign point
+
+            // If high score change
+            if (playerHighScore == null || Player.Instance.points > playerHighScore.points)
+            {
+                // save player to file
+                string path = Application.persistentDataPath + "/saveplayer.json";
+
+                // json file 
+                string json = JsonUtility.ToJson(Player.Instance);
+
+                // write json to file
+                File.WriteAllText(path, json);
+            }
+
+
             if (Input.GetKeyDown(KeyCode.Space))
             {
                 SceneManager.LoadScene(SceneManager.GetActiveScene().name);
             }
         }
     }
+
 
     void AddPoint(int point)
     {
@@ -72,5 +109,12 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+    }
+
+    [System.Serializable]
+    public class PlayerData
+    {
+        public string name;
+        public int points;
     }
 }
